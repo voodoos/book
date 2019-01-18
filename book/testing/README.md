@@ -76,7 +76,7 @@ With this done, any module in this library can host a test. We'll
 demonstrate this by creating a file called `test.ml`, containing just
 a single test.
 
-```ocaml file=../../examplescode/testing/simple_inline_test/test.ml
+```ocaml file=../../examples/code/testing/simple_inline_test/test.ml
 ```
 
 The test passes if the expression on the right-hand side of the
@@ -402,8 +402,9 @@ Now, if we run the test again, we'll see that it passes.
 We only have one expect block in this example, but the system supports
 having multiple expect blocks, as you can see below.
 
-```ocaml file=../../examples/code/testing/multi_expect_test/test.ml
-```
+(Something about multi-expect-tests here?
+../../examples/code/testing/multi_expect_test/test.ml)
+
 
 ### What are expect tests good for?
 
