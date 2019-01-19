@@ -23,7 +23,6 @@ The goal of this chapter is to teach you about some of the testing
 infrastructure available in the OCaml ecosystem. But first, let's
 discuss more generally what you should be optimizing for in your tests
 and in your testing infrastructure.
-
 ## What makes for good tests?
 
 Here are some of the properties that characterize well written tests
@@ -119,7 +118,6 @@ then we'll see an error when we run it.
            run alias runtest (exit 2)
   (cd _build/default && ./.foo.inline-tests/run.exe inline-test-runner foo -source-tree-root . -diff-cmd -)
   File "test.ml", line 3, characters 0-73: rev is false.
-
   FAILED 1 / 1 tests
 @@ exit 1
 ```
@@ -164,7 +162,6 @@ Here's what it looks like when we run the test.
     Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
     Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
     Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
-
   FAILED 1 / 1 tests
 @@ exit 1
 ```
@@ -243,7 +240,6 @@ suitable for testing (either with embedded inline tests, or from a
 purpose-built testing library); and a directory for the executable
 that links in the library, and is just responsible for launching the
 program.
-
 ## Property testing with Quickcheck
 
 The tests we've discussed so far have been pretty simple, amounting to
@@ -329,7 +325,6 @@ Quickcheck has found a counterexample.
     Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
     Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
     Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
-
   FAILED 1 / 1 tests
 @@ exit 1
 ```
@@ -560,4 +555,4 @@ whenever that visualization changes.
 This is more useful than it might seem at first. One common use-case
 of expect tests is simply to capture the behavior of a complex bit of
 code that you don't necessarily have a small specification of
-.
+(UNFINISHED)
