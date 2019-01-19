@@ -70,6 +70,14 @@ achieved by adding the `inline_tests` declaration to the library
 stanza. Here's the resulting `jbuild` file.
 
 ```scheme file=../../examples/code/testing/simple_inline_test/jbuild
+(jbuild_version 1)
+
+(library
+ ((name foo)
+  (libraries (base stdio core_kernel))
+  (preprocess (pps (ppx_jane)))
+  (inline_tests)
+))
 ```
 
 With this done, any module in this library can host a test. We'll
@@ -77,6 +85,10 @@ demonstrate this by creating a file called `test.ml`, containing just
 a single test.
 
 ```ocaml file=../../examples/code/testing/simple_inline_test/test.ml
+open! Core_kernel
+
+let%test "rev" =
+  List.equal ~equal:Int.equal (List.rev [3;2;1]) [1;2;3]
 ```
 
 The test passes if the expression on the right-hand side of the
@@ -87,17 +99,29 @@ doesn't affect this example, it's worth noting that the test runner
 will execute tests declared in different files in parallel.
 
 ```sh file=../../examples/code/testing/simple_inline_test/run.sh
+  $ jbuilder runtest --dev
 ```
 
 No output is generated because the test passed successfully.
 But if we break the test,
 
 ```ocaml file=../../examples/code/testing/broken_inline_test/test.ml
+open! Base
+
+let%test "rev" =
+  List.equal ~equal:Int.equal (List.rev [3;2;1]) [3;2;1]
 ```
 
 then we'll see an error when we run it.
 
 ```sh file=../../examples/code/testing/broken_inline_test/run.sh
+  $ jbuilder runtest --dev
+           run alias runtest (exit 2)
+  (cd _build/default && ./.foo.inline-tests/run.exe inline-test-runner foo -source-tree-root . -diff-cmd -)
+  File "test.ml", line 3, characters 0-73: rev is false.
+
+  FAILED 1 / 1 tests
+@@ exit 1
 ```
 
 ### More readable errors with `test_eq`
@@ -118,11 +142,31 @@ more concise, mostly because this is a less verbose way to express the
 comparison function.
 
 ```ocaml file=../../examples/code/testing/test_eq-inline_test/test.ml
+open! Base
+
+let%test_unit "rev" =
+  [%test_eq: int list] (List.rev [3;2;1]) [3;2;1]
 ```
 
 Here's what it looks like when we run the test.
 
 ```sh file=../../examples/code/testing/test_eq-inline_test/run.sh
+  $ jbuilder runtest --dev
+           run alias runtest (exit 2)
+  (cd _build/default && ./.foo.inline-tests/run.exe inline-test-runner foo -source-tree-root . -diff-cmd -)
+  File "test.ml", line 3, characters 0-71: rev threw
+  (runtime-lib/runtime.ml.E "comparison failed"
+    ((1 2 3) vs (3 2 1) (Loc test.ml:4:13))).
+    Raised at file "src/import0.ml" (inlined), line 351, characters 22-32
+    Called from file "runtime-lib/runtime.ml", line 28, characters 28-53
+    Called from file "runtime-lib/runtime.ml", line 486, characters 15-19
+    Called from file "runtime-lib/runtime.ml", line 327, characters 8-12
+    Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
+    Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
+    Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
+
+  FAILED 1 / 1 tests
+@@ exit 1
 ```
 
 As you can see, the data that caused the comparison to fail is printed
@@ -218,11 +262,19 @@ We can write a property test using only the tools we've learned so
 far.  Here's an example.
 
 ```ocaml file=../../examples/code/testing/manual_property_test/test.ml
+open! Base
+
+let%test_unit "negation flips the sign" =
+  for _ = 0 to 100_000 do
+    let x = Random.int_incl Int.min_value Int.max_value in
+    [%test_eq: Sign.t] (Int.sign (Int.neg x)) (Sign.flip (Int.sign x))
+  done
 ```
 
 As you can see below, this test passes.
 
 ```sh file=../../examples/code/testing/manual_property_test/run.sh
+  $ jbuilder runtest --dev
 ```
 
 One thing that was implicit in the example we gave above is the
@@ -240,6 +292,12 @@ automate the construction of testing distributions. Let's try
 rewriting the example we provided above with Quickcheck.
 
 ```ocaml file=../../examples/code/testing/quickcheck_property_test/test.ml
+open Core_kernel
+
+let%test_unit "negation flips the sign" =
+  Quickcheck.test ~sexp_of:[%sexp_of: int]
+    Int.gen ~f:(fun x ->
+        [%test_eq: Sign.t] (Int.sign (Int.neg x)) (Sign.flip (Int.sign x)))
 ```
 
 Note that we didn't explictly state how many examples should be
@@ -251,6 +309,29 @@ we've been testing doesn't actually hold on all outputs, and
 Quickcheck has found a counterexample.
 
 ```sh file=../../examples/code/testing/quickcheck_property_test/run.sh
+  $ jbuilder runtest --dev
+           run alias runtest (exit 2)
+  (cd _build/default && ./.foo.inline-tests/run.exe inline-test-runner foo -source-tree-root . -diff-cmd -)
+  File "test.ml", line 3, characters 0-185: negation flips the sign threw
+  ("random input" (value -4611686018427387904)
+    (error
+      ((runtime-lib/runtime.ml.E "comparison failed"
+         (Neg vs Pos (Loc test.ml:6:19)))
+         "Raised at file \"src/import0.ml\" (inlined), line 351, characters 22-32\
+        \nCalled from file \"runtime-lib/runtime.ml\", line 28, characters 28-53\
+        \nCalled from file \"src/or_error.ml\", line 66, characters 9-15\
+        \n"))).
+    Raised at file "src/import0.ml" (inlined), line 351, characters 22-32
+    Called from file "src/error.ml" (inlined), line 9, characters 14-30
+    Called from file "src/or_error.ml", line 74, characters 17-32
+    Called from file "runtime-lib/runtime.ml", line 486, characters 15-19
+    Called from file "runtime-lib/runtime.ml", line 327, characters 8-12
+    Re-raised at file "runtime-lib/runtime.ml", line 330, characters 6-13
+    Called from file "runtime-lib/runtime.ml", line 343, characters 15-52
+    Called from file "runtime-lib/runtime.ml", line 430, characters 52-83
+
+  FAILED 1 / 1 tests
+@@ exit 1
 ```
 
 The example that triggers the exception is `-4611686018427387904`,
@@ -288,6 +369,15 @@ simple example, where we want to test the behavior of
 generated values.
 
 ```ocaml file=../../examples/code/testing/bigger_quickcheck_test/test.ml
+open Core_kernel
+
+let%test_unit "List.rev_append is List.append of List.rev" =
+  Quickcheck.test ~sexp_of:[%sexp_of: int list * int list]
+    (Quickcheck.Generator.both (List.gen Int.gen) (List.gen Int.gen))
+    ~f:(fun (l1,l2) ->
+        [%test_eq: int list]
+          (List.rev_append l1 l2)
+          (List.append (List.rev l1) l2))
 ```
 
 Here, we made use of `Quickcheck.Generator.both`, which is useful for
@@ -378,6 +468,11 @@ the test generates output, but that output isn't captured in the
 source, at least, not yet.
 
 ```ocaml file=../../examples/code/testing/trivial_expect_test/test.ml
+open! Base
+open! Stdio
+
+let%expect_test "trivial" =
+  print_endline "Hello World!"
 ```
 
 If we run the test, we'll be presented with a diff between what we
@@ -385,6 +480,20 @@ wrote, and a corrected version of the source file with an `[%expect]`
 clause that contains the output generated by the test.
 
 ```sh file=../../examples/code/testing/trivial_expect_test/run.sh
+  $ jbuilder runtest --dev
+       patdiff (internal) (exit 1)
+  (cd _build/default && /home/yminsky/.opam/default/bin/patdiff -keep-whitespace -location-style omake -ascii test.ml test.ml.corrected)
+  ------ test.ml
+  ++++++ test.ml.corrected
+  File "test.ml", line 5, characters 0-1:
+   |open! Base
+   |open! Stdio
+   |
+   |let%expect_test "trivial" =
+  -|  print_endline "Hello World!"
+  +|  print_endline "Hello World!";
+  +|  [%expect {| Hello World! |}]
+@@ exit 1
 ```
 
 If we want to accept the corrected version of the file, we can run
@@ -392,11 +501,18 @@ If we want to accept the corrected version of the file, we can run
 to look like this.
 
 ```ocaml file=../../examples/code/testing/trivial_expect_test_fixed/test.ml
+open! Base
+open! Stdio
+
+let%expect_test "trivial" =
+  print_endline "Hello World!";
+  [%expect {| Hello World! |}]
 ```
 
 Now, if we run the test again, we'll see that it passes.
 
 ```sh file=../../examples/code/testing/trivial_expect_test_fixed/run.sh
+  $ jbuilder runtest --dev
 ```
 
 We only have one expect block in this example, but the system supports
@@ -412,11 +528,21 @@ It's not obvious why one would want to use expect tests in the first
 place. Why should this:
 
 ```ocaml file=../../examples/code/testing/simple_expect_test/test.ml
+open! Base
+open! Stdio
+
+let%expect_test "trivial" =
+  print_endline "Hello World!";
+  [%expect {| Hello World! |}]
 ```
 
 be preferable to this?
 
 ```ocaml file=../../examples/code/testing/simple_inline_test/test.ml
+open! Core_kernel
+
+let%test "rev" =
+  List.equal ~equal:Int.equal (List.rev [3;2;1]) [1;2;3]
 ```
 
 Indeed, for examples like this, expect tests don't present a material
@@ -433,4 +559,5 @@ whenever that visualization changes.
 
 This is more useful than it might seem at first. One common use-case
 of expect tests is simply to capture the behavior of a complex bit of
-code that you don't necessarily have a small specification of.
+code that you don't necessarily have a small specification of
+.
