@@ -641,58 +641,61 @@ figure out where it comes from.
 
 Here's some general advice on how to deal with `open`s: [local opens]{.idx}
 
-- Opening modules at the toplevel of a module should be done quite sparingly,
-  and generally only with modules that have been specifically designed to be
-  opened, like `Base` or `Option.Monad_infix`.
+- Opening modules at the toplevel of a module should be done quite
+  sparingly, and generally only with modules that have been
+  specifically designed to be opened, like `Base` or
+  `Option.Monad_infix`.
 
-- If you do need to do an open, it's better to do a *local open*. There are
-  two syntaxes for local opens. For example, you can write:
+- If you do need to do an open, it's better to do a *local
+  open*. There are two syntaxes for local opens. For example, you can
+  write:
 
-```ocaml env=main
-# let average x y =
-    let open Int64 in
-    (x + y) / of_int 2
-val average : int64 -> int64 -> int64 = <fun>
-```
+  ```ocaml env=main
+  # let average x y =
+	  let open Int64 in
+	  (x + y) / of_int 2
+  val average : int64 -> int64 -> int64 = <fun>
+  ```
 
-Here, `of_int` and the infix operators are the ones from the `Int64`
+  Here, `of_int` and the infix operators are the ones from the `Int64`
   module.
 
-  There's another, even more lightweight syntax for local `open`s, which is
-  particularly useful for small expressions:
+  There's another, even more lightweight syntax for local `open`s,
+  which is particularly useful for small expressions:
 
-```ocaml env=main
-# let average x y =
-    Int64.((x + y) / of_int 2)
-val average : int64 -> int64 -> int64 = <fun>
-```
+  ```ocaml env=main
+  # let average x y =
+	  Int64.((x + y) / of_int 2)
+  val average : int64 -> int64 -> int64 = <fun>
+  ```
 
-- An alternative to local `open`s that makes your code terser without giving
-  up on explicitness is to locally rebind the name of a module. So, when
-  using the `Counter.median` type, instead of writing:
+- An alternative to local `open`s that makes your code terser without
+  giving up on explicitness is to locally rebind the name of a
+  module. So, when using the `Counter.median` type, instead of
+  writing:
 
-```ocaml file=examples/freq-median/use_median_1.ml,part=1
-let print_median m =
-  match m with
-  | Counter.Median string -> printf "True median:\n   %s\n" string
-  | Counter.Before_and_after (before, after) ->
-    printf "Before and after median:\n   %s\n   %s\n" before after
-```
+  ```ocaml file=examples/freq-median/use_median_1.ml,part=1
+  let print_median m =
+	match m with
+	| Counter.Median string -> printf "True median:\n   %s\n" string
+	| Counter.Before_and_after (before, after) ->
+	  printf "Before and after median:\n   %s\n   %s\n" before after
+  ```
 
-you could write:
+  you could write:
 
-```ocaml file=examples/freq-median/use_median_2.ml,part=1
-let print_median m =
-  let module C = Counter in
-  match m with
-  | C.Median string -> printf "True median:\n   %s\n" string
-  | C.Before_and_after (before, after) ->
-    printf "Before and after median:\n   %s\n   %s\n" before after
-```
+  ```ocaml file=examples/freq-median/use_median_2.ml,part=1
+  let print_median m =
+	let module C = Counter in
+	match m with
+	| C.Median string -> printf "True median:\n   %s\n" string
+	| C.Before_and_after (before, after) ->
+	  printf "Before and after median:\n   %s\n   %s\n" before after
+  ```
 
-Because the module name `C` only exists for a short scope, it's easy to
-  read and remember what `C` stands for. Rebinding modules to very short
-  names at the top level of your module is usually a mistake.
+  Because the module name `C` only exists for a short scope, it's easy
+  to read and remember what `C` stands for. Rebinding modules to very
+  short names at the top level of your module is usually a mistake.
 
 ## Including Modules
 
